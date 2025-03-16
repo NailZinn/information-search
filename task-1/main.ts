@@ -8,6 +8,13 @@ const redundantSpacesRegex = /\s\s+/gm;
 const htmlSpecialCharsRegex = /&.+;/gm;
 const hrefRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(http.+?)(["'])/gm;
 
+const formatUrl = (url: string) => {
+  const urlWithoutQuery = url.split("?")[0];
+  return urlWithoutQuery.endsWith("/")
+    ? urlWithoutQuery.slice(0, urlWithoutQuery.length - 1)
+    : urlWithoutQuery;
+};
+
 const lookForUrlsInPage = Deno.args.length < requiredNumberOfPages;
 
 const visitedUrls = new Set<string>();
@@ -18,11 +25,12 @@ await Deno.mkdir("pages").catch(() =>
   console.log("directory pages already exists")
 );
 
-const pages = Deno.args
-  .map((x) => x.endsWith("/") ? x.slice(0, x.length - 1) : x);
+const urls = Deno.args.map(formatUrl);
 
-while (numberOfSavedPages < requiredNumberOfPages && pages.length !== 0) {
-  const url = pages.shift()!;
+while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
+  const url = urls.shift()!;
+
+  if (visitedUrls.has(url)) continue;
 
   console.log(url);
   visitedUrls.add(url);
@@ -36,7 +44,12 @@ while (numberOfSavedPages < requiredNumberOfPages && pages.length !== 0) {
 
   if (!response || response.status !== 200) continue;
 
-  const html = await response.text();
+  const html = await response.text().catch(() => {
+    console.log("response stream is not convertable to text");
+    return null;
+  });
+
+  if (!html) continue;
 
   const text = html
     .replaceAll(scriptTagRegex, " ")
@@ -61,10 +74,10 @@ while (numberOfSavedPages < requiredNumberOfPages && pages.length !== 0) {
 
   const urlsOnPage = html
     .matchAll(hrefRegex)
-    .map((x) => x[2].endsWith("/") ? x[2].slice(0, x[2].length - 1) : x[2])
+    .map((x) => formatUrl(x[2]))
     .filter((x) => !visitedUrls.has(x));
 
   for (const urlOnPage of urlsOnPage) {
-    pages.push(urlOnPage);
+    urls.push(urlOnPage);
   }
 }
