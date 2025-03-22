@@ -7,12 +7,25 @@ const styleTagRegex = /<style(.|\n)*?>(.|\n)*?<\/style>/gm;
 const redundantSpacesRegex = /\s\s+/gm;
 const htmlSpecialCharsRegex = /&.+;/gm;
 const hrefRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(http.+?)(["'])/gm;
+const cyrillicRegex = /[а-яА-Я]+|^[0-9]$/m;
+
+const forbiddenTypes = [".exe", ".apk", ".jpeg", ".png", ".webp", ".svg", ".xml", ".pdf", ".htm"];
+
+const forbiddenDomains = ["web.archive.org"];
 
 const formatUrl = (url: string) => {
   const urlWithoutQuery = url.split("?")[0];
   return urlWithoutQuery.endsWith("/")
     ? urlWithoutQuery.slice(0, urlWithoutQuery.length - 1)
     : urlWithoutQuery;
+};
+
+const hasForbiddenType = (url: string) => {
+  return forbiddenTypes.some(x => url.endsWith(x));
+};
+
+const isForbiddenUrl = (url: string) => {
+  return forbiddenDomains.some(x => url.indexOf(x) !== -1);
 };
 
 const lookForUrlsInPage = Deno.args.length < requiredNumberOfPages;
@@ -35,7 +48,7 @@ while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
   console.log(url);
   visitedUrls.add(url);
 
-  if (url.endsWith(".exe") || url.endsWith(".apk")) continue;
+  if (isForbiddenUrl(url) || hasForbiddenType(url)) continue;
 
   const response = await fetch(url).catch(() => {
     console.log(`${url}: fetch failed`);
@@ -51,24 +64,26 @@ while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
 
   if (!html) continue;
 
-  const text = html
+  const words = html
     .replaceAll(scriptTagRegex, " ")
     .replaceAll(styleTagRegex, " ")
     .replaceAll(htmlTagsRegex, " ")
     .replaceAll(htmlSpecialCharsRegex, " ")
     .replaceAll("\n", " ")
     .replaceAll(redundantSpacesRegex, " ")
-    .trim();
+    .trim()
+    .split(" ")
+    .filter(x => cyrillicRegex.test(x));
 
-  if (text.split(" ").length < requiredNumberOfWordsPerPage) continue;
-
-  numberOfSavedPages++;
-
-  await Deno.writeTextFile(`pages/${numberOfSavedPages.toString()}.txt`, text);
-
-  const indexEntry = `${numberOfSavedPages} - ${url}\n`;
-
-  await Deno.writeTextFile("index.txt", indexEntry, { append: true });
+  if (words.length >= requiredNumberOfWordsPerPage) {
+    numberOfSavedPages++;
+  
+    await Deno.writeTextFile(`pages/${numberOfSavedPages.toString()}.txt`, words.join(" "));
+  
+    const indexEntry = `${numberOfSavedPages} - ${decodeURI(url)}\n`;
+  
+    await Deno.writeTextFile("index.txt", indexEntry, { append: true });
+  }
 
   if (!lookForUrlsInPage) continue;
 
