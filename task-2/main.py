@@ -23,21 +23,21 @@ def validToken(token: str) -> bool:
     all(map(lambda x: x not in non_letters, token))
   )
 
-if not os.path.exists('tokens'):
-  os.mkdir('tokens')
+if not os.path.exists('../artifacts/tokens'):
+  os.mkdir('../artifacts/tokens')
 
-with open('../task-1/index.txt', 'r', encoding='utf-8') as index_file:
+with open('../artifacts/index.txt', 'r', encoding='utf-8') as index_file:
   index = index_file.readlines()
 
 document_names = [entry.split(' - ')[0] for entry in index]
 
 for document_name in document_names:
-  with open(f'../task-1/pages/{document_name}.txt', 'r', encoding='utf-8') as document:
+  with open(f'../artifacts/pages/{document_name}.txt', 'r', encoding='utf-8') as document:
     print(f'processing {document.name}')
     document_content = document.readline().lower()
 
   tokens = stemmer.lemmatize(document_content)
   tokens = [token + '\n' for token in tokens if validToken(token)]
 
-  with open(f'tokens/{document_name}.txt', 'w+', encoding='utf-8') as document:
+  with open(f'../artifacts/tokens/{document_name}.txt', 'w+', encoding='utf-8') as document:
     document.writelines(tokens)

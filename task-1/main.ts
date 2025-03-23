@@ -34,8 +34,8 @@ const visitedUrls = new Set<string>();
 
 let numberOfSavedPages = 0;
 
-await Deno.mkdir("pages").catch(() =>
-  console.log("directory pages already exists")
+await Deno.mkdir("../artifacts/pages", { recursive: true }).catch(() =>
+  console.log("directory ../artifacts/pages already exists")
 );
 
 const urls = Deno.args.map(formatUrl);
@@ -78,11 +78,11 @@ while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
   if (words.length >= requiredNumberOfWordsPerPage) {
     numberOfSavedPages++;
   
-    await Deno.writeTextFile(`pages/${numberOfSavedPages.toString()}.txt`, words.join(" "));
+    await Deno.writeTextFile(`../artifacts/pages/${numberOfSavedPages.toString()}.txt`, words.join(" "));
   
     const indexEntry = `${numberOfSavedPages} - ${decodeURI(url)}\n`;
   
-    await Deno.writeTextFile("index.txt", indexEntry, { append: true });
+    await Deno.writeTextFile("../artifacts/index.txt", indexEntry, { append: true });
   }
 
   if (!lookForUrlsInPage) continue;
