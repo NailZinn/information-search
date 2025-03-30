@@ -7,7 +7,7 @@ const styleTagRegex = /<style(.|\n)*?>(.|\n)*?<\/style>/gm;
 const redundantSpacesRegex = /\s\s+/gm;
 const htmlSpecialCharsRegex = /&.+;/gm;
 const hrefRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(http.+?)(["'])/gm;
-const cyrillicRegex = /[а-яА-Я]+|^[0-9]$/m;
+const cyrillicRegex = /^[а-яА-Я]+$/m;
 
 const forbiddenTypes = [".exe", ".apk", ".jpeg", ".png", ".webp", ".svg", ".xml", ".pdf", ".htm"];
 
