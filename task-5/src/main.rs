@@ -80,6 +80,29 @@ fn get_index() -> Vec<String> {
     read_file("../artifacts/index.txt")
 }
 
+fn lemmatize(input: String) -> Result<Vec<String>, PyErr> {
+    Python::with_gil::<_, Result<Vec<String>, PyErr>>(|py| {
+        let code = r#"
+            from pymystem3 import Mystem
+            stemmer = Mystem()
+            tokens = stemmer.lemmatize(input)
+        "#;
+    
+        let locals = [("input", input)].into_py_dict(py)?;
+        
+        py_run!(py, *locals, code);
+    
+        locals.get_item("tokens").unwrap().extract::<Vec<String>>()
+    })
+}
+
+fn get_document_vector_length(document_vector: &HashMap<String, f64>) -> f64 {
+    document_vector
+        .iter()
+        .fold(0.0, |acc, (_, v)| acc + v * v)
+        .sqrt()
+}
+
 fn main() {
     let args = env::args().collect::<Vec<String>>();
     let input = match args.get(1) {
@@ -90,21 +113,7 @@ fn main() {
         None => panic!("input is empty")
     };
 
-    let python_result = Python::with_gil::<_, Result<Vec<String>, PyErr>>(|py| {
-        let code = r#"
-            from pymystem3 import Mystem
-            stemmer = Mystem()
-            tokens = stemmer.lemmatize(input)
-        "#;
-
-        let locals = [("input", input)].into_py_dict(py)?;
-        
-        py_run!(py, *locals, code);
-
-        locals.get_item("tokens").unwrap().extract::<Vec<String>>()
-    });
-
-    let input_tokens = match python_result {
+    let input_tokens = match lemmatize(input) {
         Ok(res) => res
             .iter()
             .map(|x| x.to_string())
@@ -112,6 +121,10 @@ fn main() {
             .collect(),
         Err(_) => vec![]
     };
+
+    if input_tokens.len() == 0 {
+        return;
+    }
 
     let input_frequences = HashMap::<String, f64>::from_iter(
         input_tokens
@@ -131,17 +144,14 @@ fn main() {
             .map(|x| (x.0.to_string(), input_frequences.get(x.0).unwrap_or(&0.0) * x.1))
     );
 
-    let input_vector_length = input_vector
-        .iter()
-        .fold(0.0, |acc, (_, v)| acc + v * v)
-        .sqrt();
+    let input_vector_length = get_document_vector_length(&input_vector);
 
     let mut document_index = 0;
 
     let mut result = HashMap::new();
 
     loop {
-        if document_index == 100 {
+        if document_index == index.len() {
             break;
         }
 
@@ -155,10 +165,7 @@ fn main() {
             .iter()
             .fold(0.0, |acc, (k, v)| acc + v * input_vector.get(k).unwrap());
 
-        let document_vector_length = document_vector
-            .iter()
-            .fold(0.0, |acc, (_, v)| acc + v * v)
-            .sqrt();
+        let document_vector_length = get_document_vector_length(&document_vector);
         
         let cosine_symmetry = scalar_product / ((document_vector_length * input_vector_length));
 
