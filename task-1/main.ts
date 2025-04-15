@@ -8,17 +8,24 @@ const redundantSpacesRegex = /\s\s+/gm;
 const htmlSpecialCharsRegex = /&.+;/gm;
 const hrefRegex = /<a\s+(?:[^>]*?\s+)?href=(["'])(http.+?)(["'])/gm;
 const cyrillicRegex = /^[а-яА-Я]+$/m;
+const schemaRegex = /^(http|https):\/\//gm;
 
 const forbiddenTypes = [".exe", ".apk", ".jpeg", ".png", ".webp", ".svg", ".xml", ".pdf", ".htm"];
 
 const forbiddenDomains = ["web.archive.org"];
 
 const formatUrl = (url: string) => {
-  const urlWithoutQuery = url.split("?")[0];
+  const urlWithoutQuery = decodeURI(url.split("?")[0]);
   return urlWithoutQuery.endsWith("/")
     ? urlWithoutQuery.slice(0, urlWithoutQuery.length - 1)
     : urlWithoutQuery;
 };
+
+const normalizeUrl = (url: string) => {
+  return url
+    .replace(schemaRegex, "")
+    .toLowerCase();
+}
 
 const hasForbiddenType = (url: string) => {
   return forbiddenTypes.some(x => url.endsWith(x));
@@ -42,11 +49,12 @@ const urls = Deno.args.map(formatUrl);
 
 while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
   const url = urls.shift()!;
+  const normalizedUrl = normalizeUrl(url);
 
-  if (visitedUrls.has(url)) continue;
+  if (visitedUrls.has(normalizedUrl)) continue;
 
   console.log(url);
-  visitedUrls.add(url);
+  visitedUrls.add(normalizedUrl);
 
   if (isForbiddenUrl(url) || hasForbiddenType(url)) continue;
 
@@ -80,17 +88,19 @@ while (numberOfSavedPages < requiredNumberOfPages && urls.length !== 0) {
   
     await Deno.writeTextFile(`../artifacts/pages/${numberOfSavedPages.toString()}.txt`, words.join(" "));
   
-    const indexEntry = `${numberOfSavedPages} - ${decodeURI(url)}\n`;
+    const indexEntry = `${numberOfSavedPages} - ${url}\n`;
   
     await Deno.writeTextFile("../artifacts/index.txt", indexEntry, { append: true });
   }
 
   if (!lookForUrlsInPage) continue;
 
-  const urlsOnPage = html
-    .matchAll(hrefRegex)
-    .map((x) => formatUrl(x[2]))
-    .filter((x) => !visitedUrls.has(x));
+  const urlsOnPage = new Set(
+    html
+      .matchAll(hrefRegex)
+      .map((x) => formatUrl(x[2]))
+      .filter((x) => !visitedUrls.has(normalizeUrl(x)))
+  );
 
   for (const urlOnPage of urlsOnPage) {
     urls.push(urlOnPage);

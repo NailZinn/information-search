@@ -17,6 +17,7 @@ var invertedIndex = (await File.ReadAllTextAsync("../artifacts/inverted-index.tx
 if (args.Length == 0)
 {
     Console.WriteLine("No expression provided");
+    return;
 }
 
 var allDocuments = index

@@ -167,7 +167,7 @@ fn main() {
 
         let document_vector_length = get_document_vector_length(&document_vector);
         
-        let cosine_symmetry = scalar_product / ((document_vector_length * input_vector_length));
+        let cosine_symmetry = scalar_product / (document_vector_length * input_vector_length);
 
         result.insert(document_index, cosine_symmetry);
 
@@ -178,7 +178,7 @@ fn main() {
         .iter()
         .sorted_by(|a, b| b.1.partial_cmp(a.1).unwrap());
 
-    for (k, v) in documents {
-        println!("{} {}", v, index.get(*k).unwrap())
+    for (i, (k, v)) in documents.enumerate() {
+        println!("{}) {} {}", i + 1, v, index.get(*k).unwrap())
     }
 }
